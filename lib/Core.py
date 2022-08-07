@@ -1,14 +1,20 @@
 import asyncio
+from importlib import reload
 import threading
 import lib.Gruntime as Gruntime
+import lib.Gconstants as Gconstants
+import json
 from functools import partial
 from sys import path
 from os import listdir
-from os.path import abspath
 from inspect import getmembers, isfunction
 from shlex import split as shlexSplit
 from lib.Errors import ModNotFoundError, NothingError
 from lib.base.TaskList import TaskItem
+from rich.console import Console
+from rich import inspect
+from lib.base.TaskList import TaskList
+from os.path import abspath
 
 def StartTaskLoop(loop):
     asyncio.set_event_loop(loop)
@@ -18,26 +24,30 @@ def StartTaskThread():
     loop = asyncio.new_event_loop()
     Gruntime.set_value("TaskLoop",loop)
     Gruntime.get_value("TaskLoop").set_exception_handler(exception_handler)
-    thread = threading.Thread(target=lambda: StartTaskLoop(loop))
-    #Gruntime.set_value("TaskThread",thread)
+    thread = threading.Thread(target=lambda: StartTaskLoop(loop),daemon=True)
+    Gruntime.set_value("TaskThread",thread)
     thread.start()
+
 
 def Fire(s):
 
     s = ParseSingle(s)
     modname, args = s
-    ifconcurrent, mod = GetmodfromSingle(s)
+    Flag, mod = GetmodfromSingle(s)
     pargs = [p for p in args if type(p) == str]
     kargs = {x:y for x,y in [list(k.items())[0] for k in args if type(k) == dict]}
-    ti = TaskItem(modname, ','.join(["{}={}".format(*list(arg.items())[0]) if type(arg)== dict else arg for arg in args]))
-    if ifconcurrent:
+    argstr = ','.join(["{}={}".format(*list(arg.items())[0]) if type(arg)== dict else arg for arg in args])
+    ti = TaskItem(modname,argstr,Gruntime.get_value("Config").get("workdir"))
+    if Flag == Gconstants.CONCURRENT:
         kargs["taskinfo"] = ti
         pmod = partial(mod,**kargs)
-        Gruntime.get_value("TaskLoop").set_exception_handler(exception_handler)
-        future = Gruntime.get_value("TaskLoop").run_in_executor(None,pmod,*pargs)
         key = Gruntime.get_value("TaskList").addTask(ti)
+        future = Gruntime.get_value("TaskLoop").run_in_executor(None,pmod,*pargs)
         future.key = key
         return
+    if Flag != Gconstants.GBUILTIN:
+        kargs["taskinfo"] = ti
+        key = Gruntime.get_value("TaskList").addTask(ti)
     mod(*pargs, **kargs)
     
 def ParseSingle(sgl: str):
@@ -71,7 +81,7 @@ def exception_handler(loop,context):
     if 'future' in context.keys() and (future := context['future']):
         TL = Gruntime.get_value("TaskList")
         item = TL.getTask(future.key)
-        item.status = Gruntime.ERROR
+        item.status = Gconstants.ERROR
         item.result = str(future.exception())
     Gruntime.get_value("Console").print("❌",context['exception'])
 
@@ -79,30 +89,66 @@ def exception_handler(loop,context):
 def GetmodfromSingle(sngl: tuple):
     """
     取内置模块/自定义模块
-    ret: bool,Function 是否为异步任务|函数对象
+    ret: Flag,Function 任务类型标记|函数对象
     """
     modname, args = sngl
-    ifconcurrent, mod = Getstart(modname)
-    return ifconcurrent, mod
+    Flag, mod = Getstart(modname)
+    return Flag, mod
 
 
 def Getstart(mname):
     import lib.Gbuiltins as gbt
     if btin := dict(getmembers(gbt, isfunction)).get(mname):
-        return False, btin
-    spdir = abspath(__file__ + '/../../script/')
+        return Gconstants.GBUILTIN, btin
+    spdir = Gruntime.get_value('Config').get('workdir')
     path.insert(0, spdir)
     mods = [modname[0:-3]
             for modname in listdir(spdir) if modname.endswith('.py')]
     try:
-        if (mname in mods):
-            idx = mods.index(mname)
-            mod = __import__(mods[idx], fromlist=['start'])
+        if mname in (rtmods := Gruntime.get_value("RuntimeMods")):
+            mod = reload(rtmods['mname'])
             start = getattr(mod, 'start', None)
-            return hasattr(mod,"CONCURRENT_FLAG_OF_GUNNER"), start
+            return Gconstants.CONCURRENT if hasattr(mod,"CONCURRENT_FLAG_OF_GUNNER") else Gconstants.NORMALMOD, start
+        if (mname in mods):
+            mod = __import__(mname, fromlist=['start'])
+            start = getattr(mod, 'start', None)
+            return Gconstants.CONCURRENT if hasattr(mod,"CONCURRENT_FLAG_OF_GUNNER") else Gconstants.NORMALMOD, start
     except ValueError as e:
         pass
     raise ModNotFoundError(mname)
 
+def InitRuntime():
+    
+    Gruntime.set_value("MainPath",abspath("."))
+    Gruntime.set_value("TaskList",TaskList())
+    Gruntime.set_value("Config",loadConfig())
+    Gruntime.set_value("Console",Console())
+    Gruntime.set_value("RichInspect",inspect)
+    re2ab()
 
+def StopRuntime():
+    loop = Gruntime.get_value("TaskLoop")
+    loop.call_soon_threadsafe(loop.stop)
+
+def re2ab(key='workdir'):
+    conf = Gruntime.get_value("Config")
+    relative = conf.get(key)
+    conf[key] = abspath(relative)
+    Gruntime.set_value("Config",conf)
+
+def loadConfig():
+    confile = Gruntime.getConfile()
+    with open(confile,'r') as f:
+        wjson = json.loads(f.read())
+    return wjson
+
+def setConfig(key,value):
+    confile = Gruntime.getConfile()
+    wjson = loadConfig()
+    with open(confile,'w') as f:
+        wjson[key] = value
+        json.dump(wjson,f)
+    Gruntime.set_value("Config",loadConfig())
+    re2ab()
+        
 

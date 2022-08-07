@@ -25,3 +25,7 @@ class MissingArgsError(InputError):
 class RedundantArgsError(InputError):
     def __init__(self, args):
         super().__init__("Reduntdant args {}",','.join(args))
+
+class TaskNotFoundError(InputError):
+    def __init__(self, id):
+        super().__init__("The task of '{}' was not found, please check your input.", id)

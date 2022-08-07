@@ -1,3 +1,58 @@
+```
+   ______                           
+  / ____/_  ______  ____  ___  _____
+ / / __/ / / / __ \/ __ \/ _ \/ ___/ = Enjoy Being a Hacker =
+/ /_/ / /_/ / / / / / / /  __/ /    
+\____/\__,_/_/ /_/_/ /_/\___/_/     
+
+
+Gunner是一个Python用户自定义脚本管理器
+Gunner is a user-defined script manager in python
+
+对你自己的脚本做一些简单修改
+You may make slight changes in your own scripts,
+
+即可在支持后台并行任务的Gunner CLI中运行
+and run them in Gunner's CLI, which supports background and concurrent tasks.
+```
+
+# 安装/Install
+
+    git clone https://github.com/GeekBar-Boss/Gunner.git
+
+# 基础使用/Basic Usage
+
+目前Gunner有如下四个内置模块
+
+Currently Gunner has following builtin modules
+
+- workdir
+  
+  支持相对路径
+  
+  Supporting relative path.
+  
+  ![](docs/2022-08-07-21-30-24-image.png)
+
+- task
+  
+      task [ModuleName]
+  
+  ![](docs/2022-08-07-21-50-00-image.png)
+
+- logs
+  
+      logs <TaskName>
+  
+  ![](docs/2022-08-07-21-50-23-image.png)
+
+- help
+  
+  ![](docs/2022-08-07-21-51-07-image.png)
+
+The script should be like this:
+
+```python
 import time
 #就写这么一句引入GunnerMod的语句就行
 #Just import GunnerMod decorator in lib.Interface.
@@ -34,3 +89,16 @@ def start(a,b,c=1,taskinfo=None):
     taskinfo.log("My god, log 4")
     taskinfo.log("Holy shit, log 5")
     taskinfo.log("Ahh! log 6")
+```
+
+你可以这样运行一个工作目录下的脚本
+
+You may run a script in workdir like this
+
+```
+Gunner>scriptname arg1 arg2 arg3key=arg3 arg4
+```
+
+不以key=value形式指定的关键词参数需要注意顺序
+
+You have to input non-keyword arguments in order

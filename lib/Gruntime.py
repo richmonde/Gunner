@@ -1,23 +1,17 @@
-from concurrent.futures import ThreadPoolExecutor
-from rich.console import Console
-from rich import inspect
-from lib.Config import loadConfig
-from lib.base.TaskList import TaskList
-DONE = 'DONE'
-RUNNING = 'RUNNING'
-ERROR = 'ERROR'
+from sys import modules as Gruntime_mods
 def _init():  # 初始化
     global _global_dict
     _global_dict = {
-        'TaskList': TaskList(),
-        'Config': loadConfig(),
-        'Console': Console(),
-        'RichInspect': inspect,
+        'MainPath': None,
+        'TaskList': None,
+        'Config': None,
+        'Console': None,
+        'RichInspect': None,
         #'ThreadPool': ThreadPoolExecutor(max_workers=3),
         'TaskLoop': None,
         'TaskThread': None,
+        'RuntimeMods': Gruntime_mods
     }
-
 
 def set_value(key, value):
     """ 定义一个全局变量 """
@@ -30,3 +24,6 @@ def get_value(key, defValue=None):
         return _global_dict[key]
     except KeyError:
         return defValue
+
+def getConfile():
+    return f"{get_value('MainPath')}/config.json"
