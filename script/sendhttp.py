@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler
 from io import BytesIO
 from urllib3 import HTTPResponse as urllib3RES
 from http.client import HTTPResponse
-#from lib.Interface import GunnerMod
+from lib.Interface import GunnerMod
 import socket,ssl
 from os.path import dirname,abspath
 class GunnerHTTPRequestParser(BaseHTTPRequestHandler):
@@ -36,7 +36,7 @@ class GunnerHTTPRequestParser(BaseHTTPRequestHandler):
         self.__init__(newreq.encode())
 
  
-#@GunnerMod
+@GunnerMod
 def start(requestFile,taskinfo=None,**headers):
     with open(abspath(f"{dirname(__file__)}/{requestFile}"),'r') as reqf:
         req = GunnerHTTPRequestParser(reqf.read().encode())
