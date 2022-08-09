@@ -26,8 +26,17 @@ class TaskItem():
         self.result = res
 
     def log(self,info):
-        self.update(info)
-        self.logs.append(f"[{strftime('%y%m%d-%H:%M:%S')}] {info}")
+        timestamp = f"[{strftime('%y%m%d-%H:%M:%S')}]"
+        if len(info) > 1024:
+            opentype = "a" if type(info) == str else "ab"
+            logdir = f"{self.workdir}/{self.key}/"
+            if not direxists(logdir):
+                makedirs(logdir)
+            with open(f"{logdir}/{self.key}.log",opentype) as logfile:
+                logfile.write(timestamp.encode()+Gconstants.LINESEP.encode()+info)
+        else:
+            self.update(info)
+            self.logs.append("[{}] {}".format(timestamp,info))
         if len(self.logs) == 5:
             logdir = f"{self.workdir}/{self.key}/"
             if not direxists(logdir):
